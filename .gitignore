@@ -6,4 +6,6 @@
 .vscode/settings.json
 .vscode/tasks.json
 .devcontainer/docker
+build/
+sdkconfig
 README.md*
