@@ -1,0 +1,20 @@
+{
+    "name": "ESP8266 Dev",
+    "context": "..",
+    "workspaceFolder": "/workspace",
+    "runArgs": [
+        "--device=/dev/ttyUSB0"
+    ],
+    "extensions": [
+        "ms-vscode.cpptools", // Dodaj odpowiednie rozszerzenia
+        "espressif.esp-idf-extension"
+    ],
+    "settings": {
+        "terminal.integrated.shell.linux": "/bin/bash"
+    },
+    "mounts": [
+        "source=/mnt/c/Users/Patryk/Desktop/App/ESP_WiFi_Tutorials,target=/workspace,type=bind"
+    ],
+    "dockerFile": "./Dockerfile",
+    "remoteUser": "root"
+}
