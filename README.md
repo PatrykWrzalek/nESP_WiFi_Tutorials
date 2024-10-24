@@ -2,35 +2,30 @@
 
 Repository for getting knowledge about WiFi connection in ESP8266 and ESP32 (programing in ESP-IDF).
 
-<!-- # _Sample project_
+# How to setup all project (will write soon)
 
-(See the README.md file in the upper level 'examples' directory for more information about examples.)
+# My project structure
+Information about Project Building:
+https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-guides/build-system.html
 
-This is the simplest buildable example. The example is used by command `idf.py create-project`
-that copies the project to user specified path and set it's name. For more information follow the [docs page](https://docs.espressif.com/projects/esp-idf/en/latest/api-guides/build-system.html#start-a-new-project)
+NOTE: After changes in CMakeLists.txt use idf.py reconfigure!
 
-## How to use example
-
-We encourage the users to use the example as a template for the new projects.
-A recommended way is to follow the instructions on a [docs page](https://docs.espressif.com/projects/esp-idf/en/latest/api-guides/build-system.html#start-a-new-project).
-
-## Example folder contents
-
-The project **sample_project** contains one source file in C language [main.c](main/main.c). The file is located in folder [main](main).
-
-ESP-IDF projects are built using CMake. The project build configuration is contained in `CMakeLists.txt`
-files that provide set of directives and instructions describing the project's source files and targets
-(executable, library, or both).
-
-Below is short explanation of remaining files in the project folder.
-
-```
-├── CMakeLists.txt
-├── main
-│   ├── CMakeLists.txt
-│   └── main.c
-└── README.md                  This is the file you are currently reading
-```
-
-Additionally, the sample project contains Makefile and component.mk files, used for the legacy Make based build system.
-They are not used or needed when building with CMake and idf.py. -->
+        my_project/
+        ├── CMakeLists.txt              # Główny plik CMake
+        ├── main/
+        │   ├── CMakeLists.txt          # Plik CMake dla katalogu main
+        │   ├── main.h                  # Nagłowek dla pliku źródłowego
+        │   └── main.c                  # Główny plik źródłowy
+        ├── components/
+        │   ├── init_fun
+        │	    ├── CMakeLists.txt  # Plik CMake dla komponentu init_fun
+        │	    ├── init_fun.h      # Własne bibloteki
+        │   	└── init_fun.c          # Nagłówek własnej bibloteki
+        │   └── ...                     # Inne komponenty
+        ├── .devcontainer/
+        │   ├── devcontainer.json
+        │   └── Dockerfile
+        ├── .vscode/
+        │   ├── c_cpp_properties.json
+        │   └── settings.json
+        └── README.md

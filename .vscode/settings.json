@@ -20,7 +20,9 @@
         "task.h": "c",
         "cstdio": "c",
         "stdbool.h": "c",
-        "stdint.h": "c"
+        "stdint.h": "c",
+        "freertos.h": "c",
+        "init_fun.h": "c"
     },
     "terminal.integrated.env.linux": {
         "IDF_PATH": "/opt/esp/ESP8266_RTOS_SDK"
