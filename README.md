@@ -8,7 +8,7 @@ Repository for getting knowledge about WiFi connection in ESP8266 and ESP32 (pro
 Information about Project Building:
 https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-guides/build-system.html
 
-NOTE: After changes in CMakeLists.txt use idf.py reconfigure!
+NOTE: After changes in CMakeLists.txt use "idf.py reconfigure"!
 
         my_project/
         ├── CMakeLists.txt              # Główny plik CMake
