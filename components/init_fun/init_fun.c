@@ -80,14 +80,47 @@ void esp_AP_init(void)
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_AP, &esp_ap_config)); // Ustawienie konfiguracji dla AP
     ESP_ERROR_CHECK(esp_wifi_start());                                    // Uruchomienie Wi-Fi
 
-    for (uint8_t attempt = 1; attempt <= 3; attempt++) // 3 próby ustawienia własnej konfiguracji TCP/IP & DHCP
-    {
-        esp_err_t change_tcpip_dhcp_attempt = change_tcpip_dhcp();
-        if (change_tcpip_dhcp_attempt == ESP_OK)
-            break;
-    }
-
+    custom_tcpip_dhcp();                                                              // Ustawienie własnej konfiguracji TCP/IP & DHCP
     ESP_LOGI(TAG, "esp_AP_init finished. SSID:%s password:%s\r\n", AP_SSID, AP_PASS); // Info for debug
+}
+
+/******************************************************************************
+ * FunctionName : custom_tcpip_dhcp
+ * Description : function that changes TCP/IP and DHCP settings. If applying the custom
+ *               settings fails after multiple attempts, it restores the default values.
+ * Parameters   : none
+ * Returns      : none
+ *******************************************************************************/
+void custom_tcpip_dhcp(void)
+{
+    ESP_LOGI(TAG, "Starting custom TCP/IP & DHCP configuration...\r\n");
+    esp_err_t dhcps_stop_err = tcpip_adapter_dhcps_stop(TCPIP_ADAPTER_IF_AP); // Wyłączenie serwera DHCP przed jego konfiguracją
+    if (dhcps_stop_err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to stop DHCP server: %d\r\n", dhcps_stop_err);
+    }
+    else
+    {
+        tcpip_adapter_ip_info_t ip_info_backup = {0};                    // Konfiguracja IP (default)
+        dhcps_lease_t dhcp_lease_backup = {0};                           // Konfiguracja DHCP (default)
+        tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_AP, &ip_info_backup); // Odczytanie konfiguracji IP
+        tcpip_adapter_dhcps_option(TCPIP_ADAPTER_OP_GET, TCPIP_ADAPTER_REQUESTED_IP_ADDRESS,
+                                   &dhcp_lease_backup, sizeof(dhcps_lease_t)); // Odczytanie konfiguracji DHCP
+
+        for (uint8_t attempt = 1; attempt <= 3; attempt++) // 3 próby ustawienia własnej konfiguracji TCP/IP & DHCP
+        {
+            esp_err_t change_tcpip_dhcp_attempt = change_tcpip_dhcp(); // Próba zmiany konfiguracji TCP/IP & DHCP
+            if (change_tcpip_dhcp_attempt == ESP_OK)
+                return;
+            else if (attempt == 3)
+            {
+                tcpip_adapter_set_ip_info(TCPIP_ADAPTER_IF_AP, &ip_info_backup); // Ustawienie konfiguracji IP (default)
+                tcpip_adapter_dhcps_option(TCPIP_ADAPTER_OP_SET, TCPIP_ADAPTER_REQUESTED_IP_ADDRESS,
+                                           &dhcp_lease_backup, sizeof(dhcps_lease_t)); // Ustawienie konfiguracji DHCP (default)
+                tcpip_adapter_dhcps_start(TCPIP_ADAPTER_IF_AP);                        // Ponowne uruchomienie serwera DHCP
+            }
+        }
+    }
 }
 
 /******************************************************************************
@@ -99,21 +132,12 @@ void esp_AP_init(void)
  *******************************************************************************/
 esp_err_t change_tcpip_dhcp()
 {
-    ESP_LOGI(TAG, "Starting custom TCP/IP & DHCP configuration...\r\n");
-
-    esp_err_t ERR = tcpip_adapter_dhcps_stop(TCPIP_ADAPTER_IF_AP); // Wyłączenie serwera DHCP przed jego konfiguracją
-    if (ERR != ESP_OK)
-    {
-        ESP_LOGE(TAG, "Failed to stop DHCP server: %d\r\n", ERR);
-        return ERR;
-    }
-
     tcpip_adapter_ip_info_t ip_info = {0};        // Konfiguracja IP
     IP4_ADDR(&ip_info.ip, 192, 168, 1, 1);        // Nowy adres IP dla AP
     IP4_ADDR(&ip_info.gw, 192, 168, 1, 1);        // Brama
     IP4_ADDR(&ip_info.netmask, 255, 255, 255, 0); // Maska podsieci
 
-    ERR = tcpip_adapter_set_ip_info(TCPIP_ADAPTER_IF_AP, &ip_info); // Ustawienie konfiguracji IP
+    esp_err_t ERR = tcpip_adapter_set_ip_info(TCPIP_ADAPTER_IF_AP, &ip_info); // Ustawienie konfiguracji IP
     if (ERR != ESP_OK)
     {
         ESP_LOGE(TAG, "Failed to set IP configuration: %d\r\n", ERR);
@@ -143,13 +167,23 @@ esp_err_t change_tcpip_dhcp()
     ESP_LOGI(TAG, "Custom TCP/IP & DHCP configuration completed successfully.\r\n");
     uint8_t my_MAC[6]; // Tablica na adress MAC
     // uint8_t *my_MAC = (uint8_t *)malloc(6);      // Dynamiczna alokacja pamięci na adres MAC
-    esp_err_t my_MAC_err = esp_base_mac_addr_get(my_MAC); // Odczytanie jaki adres MAC ma ESP w EFUSE
+    esp_err_t my_MAC_err = esp_base_mac_addr_get(my_MAC); // Odczytanie jaki adres MAC ma ESP
     if (my_MAC_err == ESP_OK)
     {
-        ESP_LOGI(TAG, "MAC Address in EFUSE: %02x:%02x:%02x:%02x:%02x:%02x\r\n",
+        ESP_LOGI(TAG, "MAC Address: %02x:%02x:%02x:%02x:%02x:%02x\r\n",
                  my_MAC[0], my_MAC[1], my_MAC[2],
                  my_MAC[3], my_MAC[4], my_MAC[5]);
-        // free(my_MAC);    // Zwolnienie (dynamicznie za alokowanej) pamięci na adress MAC
     }
+    else
+    {
+        my_MAC_err = esp_efuse_mac_get_default(my_MAC); // Odczytanie jaki adres MAC ma ESP w EFUSE
+        if (my_MAC_err == ESP_OK)
+        {
+            ESP_LOGI(TAG, "MAC Address in EFUSE: %02x:%02x:%02x:%02x:%02x:%02x\r\n",
+                     my_MAC[0], my_MAC[1], my_MAC[2],
+                     my_MAC[3], my_MAC[4], my_MAC[5]);
+        }
+    }
+    // free(my_MAC);    // Zwolnienie (dynamicznie za alokowanej) pamięci na adress MAC
     return ESP_OK;
 }
