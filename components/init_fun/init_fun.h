@@ -11,5 +11,6 @@
 
 void gpio_init(void);
 void esp_AP_init(void);
+esp_err_t change_tcpip_dhcp();
 
 #endif
