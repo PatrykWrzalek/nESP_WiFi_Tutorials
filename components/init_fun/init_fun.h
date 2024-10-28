@@ -2,6 +2,7 @@
 #define __INIT_FUN_H__
 
 #include <main.h>
+#include <https.h>
 
 #define TAG "ESP8266"
 #define HOSTNAME "ESP_Iot"
