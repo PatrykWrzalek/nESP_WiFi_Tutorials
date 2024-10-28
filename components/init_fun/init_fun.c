@@ -14,13 +14,13 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
     case WIFI_EVENT_AP_STACONNECTED: // Gdy nowe urządzenie (klient) połączy się z ESP działającym jako AP
     {
         wifi_event_ap_staconnected_t *event = (wifi_event_ap_staconnected_t *)event_data;      // Rzutowanie danych
-        ESP_LOGI(TAG, "station " MACSTR " join, AID=%d\r\n", MAC2STR(event->mac), event->aid); // Wypisz adres MAC klienta oraz jego AID (identyfikator)
+        ESP_LOGI(TAG, "Station " MACSTR " join, AID=%d\r\n", MAC2STR(event->mac), event->aid); // Wypisz adres MAC klienta oraz jego AID (identyfikator)
         break;
     }
     case WIFI_EVENT_AP_STADISCONNECTED: // Gdy urządzenie (klient) rozłączy się z ESP działającym jako AP
     {
         wifi_event_ap_stadisconnected_t *event = (wifi_event_ap_stadisconnected_t *)event_data; // Rzutowanie danych
-        ESP_LOGI(TAG, "station " MACSTR " leave, AID=%d\r\n", MAC2STR(event->mac), event->aid); // Wypisz adres MAC klienta oraz jego AID
+        ESP_LOGI(TAG, "Station " MACSTR " leave, AID=%d\r\n", MAC2STR(event->mac), event->aid); // Wypisz adres MAC klienta oraz jego AID
         break;
     }
     default:
@@ -54,6 +54,8 @@ void gpio_init(void)
  *******************************************************************************/
 void esp_AP_init(void)
 {
+    httpd_handle_t web_server = NULL;
+
     ESP_ERROR_CHECK(nvs_flash_init());                // Inicjalizacja pamięci NVS (Non-Volatile Storage)
     ESP_ERROR_CHECK(esp_netif_init());                // Inicjalizacja adaptera TCP/IP
     ESP_ERROR_CHECK(esp_event_loop_create_default()); // Tworzenie domyślnej pętli zdarzeń
@@ -61,9 +63,12 @@ void esp_AP_init(void)
     wifi_init_config_t wifi_config = WIFI_INIT_CONFIG_DEFAULT();                                          // Konfiguracja Wi-Fi z domyślnymi ustawieniami
     ESP_ERROR_CHECK(esp_wifi_init(&wifi_config));                                                         // Inicjalizacja Wi-Fi
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL)); // Rejestarcja funkcja callback do obsługi zdarzeń WiFi
-    // ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_ANY_IP, &event_handler, NULL));     // Rejestarcja funkcja callback do obsługi zdarzeń IP
 
-    wifi_config_t esp_ap_config;                         // Struktura do przechowywania konfiguracji AP
+    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &connect_handler, &web_server));                // Rejestarcja funkcja callback do obsługi zdarzenia przydzielenia IP klientowi
+    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_AP_STADISCONNECTED, &disconnect_handler, &web_server)); // Rejestarcja funkcja callback do obsługi zdarzenia rozłączenia klienta z AP
+
+    // ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM)); // Ustawienie przechowywania konfiguracji WiFi w RAM
+    wifi_config_t esp_ap_config = {0};                   // Struktura do przechowywania konfiguracji AP
     sprintf((char *)esp_ap_config.ap.ssid, AP_SSID);     // Ustawienie SSID AP
     sprintf((char *)esp_ap_config.ap.password, AP_PASS); // Ustawienie hasła AP
     esp_ap_config.ap.ssid_len = strlen(AP_SSID);         // Ustalamy długość SSID
@@ -82,6 +87,13 @@ void esp_AP_init(void)
 
     custom_tcpip_dhcp();                                                              // Ustawienie własnej konfiguracji TCP/IP & DHCP
     ESP_LOGI(TAG, "esp_AP_init finished. SSID:%s password:%s\r\n", AP_SSID, AP_PASS); // Info for debug
+
+    tcpip_adapter_ip_info_t ip_info = {0};
+    tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_AP, &ip_info); // Odczytanie konfiguracji IP
+    ESP_LOGI(TAG, "ESP Ip:" IPSTR ",Mask:" IPSTR ",Gw:" IPSTR "\r\n", IP2STR(&ip_info.ip),
+             IP2STR(&ip_info.netmask), IP2STR(&ip_info.gw));
+
+    web_server = start_webserver();
 }
 
 /******************************************************************************
@@ -170,7 +182,7 @@ esp_err_t change_tcpip_dhcp()
     esp_err_t my_MAC_err = esp_base_mac_addr_get(my_MAC); // Odczytanie jaki adres MAC ma ESP
     if (my_MAC_err == ESP_OK)
     {
-        ESP_LOGI(TAG, "MAC Address: %02x:%02x:%02x:%02x:%02x:%02x\r\n",
+        ESP_LOGI(TAG, "ESP MAC Address: %02x:%02x:%02x:%02x:%02x:%02x\r\n",
                  my_MAC[0], my_MAC[1], my_MAC[2],
                  my_MAC[3], my_MAC[4], my_MAC[5]);
     }
@@ -179,7 +191,7 @@ esp_err_t change_tcpip_dhcp()
         my_MAC_err = esp_efuse_mac_get_default(my_MAC); // Odczytanie jaki adres MAC ma ESP w EFUSE
         if (my_MAC_err == ESP_OK)
         {
-            ESP_LOGI(TAG, "MAC Address in EFUSE: %02x:%02x:%02x:%02x:%02x:%02x\r\n",
+            ESP_LOGI(TAG, "ESP MAC Address in EFUSE: %02x:%02x:%02x:%02x:%02x:%02x\r\n",
                      my_MAC[0], my_MAC[1], my_MAC[2],
                      my_MAC[3], my_MAC[4], my_MAC[5]);
         }
