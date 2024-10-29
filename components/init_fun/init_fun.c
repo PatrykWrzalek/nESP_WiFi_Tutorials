@@ -36,6 +36,8 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
  *******************************************************************************/
 void gpio_init(void)
 {
+    ESP_LOGI(TAG, "Initializing GPIO\r\n");
+
     gpio_config_t io_conf;
     io_conf.pin_bit_mask = ((1 << 2));
     io_conf.mode = GPIO_MODE_OUTPUT;
@@ -43,7 +45,66 @@ void gpio_init(void)
     io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
     io_conf.intr_type = GPIO_INTR_DISABLE;
 
-    gpio_config(&io_conf);
+    esp_err_t ERR = gpio_config(&io_conf);
+    if (ERR != ESP_OK)
+    {
+        ESP_LOGI(TAG, "Failed to initialize GPIO\r\n");
+    }
+    else
+    {
+        ESP_LOGI(TAG, "Successfully initialized GPIO\r\n");
+    }
+}
+
+/******************************************************************************
+ * FunctionName : spiffs_init
+ * Description  : initializes SPIFFS.
+ * Parameters   : none
+ * Returns      : none
+ *******************************************************************************/
+void spiffs_init(void)
+{
+    ESP_LOGI(TAG, "Initializing SPIFFS\r\n");
+
+    esp_vfs_spiffs_conf_t spiffs_conf;         // Konfiguracja SPIFFS
+    spiffs_conf.base_path = "/spiffs";         // Ścieżka bazowa dla SPIFFS
+    spiffs_conf.partition_label = NULL;        // Domyślna partycja SPIFFS
+    spiffs_conf.max_files = 5;                 // Maksymalna liczba otwartych plików
+    spiffs_conf.format_if_mount_failed = true; // Formatowanie, jeśli montowanie się nie powiodło
+
+    esp_err_t ERR = esp_vfs_spiffs_register(&spiffs_conf); // Zainicjuj i zamontuj system plików SPIFFS na podstawie powyższej konfiguracji
+    if (ERR != ESP_OK)
+    {
+        if (ERR == ESP_FAIL)
+        {
+            ESP_LOGE(TAG, "Failed to mount or format filesystem\r\n"); // Błąd montowania lub formatowania systemu
+        }
+        else if (ERR == ESP_ERR_NOT_FOUND)
+        {
+            ESP_LOGE(TAG, "Failed to find SPIFFS partition\r\n"); // Nie znaleziono partycji SPIFFS
+        }
+        else
+        {
+            ESP_LOGE(TAG, "Failed to initialize SPIFFS (%s)\r\n", esp_err_to_name(ERR)); // Inny błąd inicjalizacji SPIFFS
+        }
+        return;
+    }
+    else
+    {
+        ESP_LOGI(TAG, "Successfully initialized SPIFFS\r\n");
+    }
+}
+
+/******************************************************************************
+ * FunctionName : spiffs_deinit
+ * Description  : shut down and deinitializes SPIFFS.
+ * Parameters   : none
+ * Returns      : none
+ *******************************************************************************/
+void spiffs_deinit(void)
+{
+    esp_vfs_spiffs_unregister(NULL); // Odmontowanie partycji SPIFFS i wyłączenie systemu SPIFFS
+    ESP_LOGI(TAG, "SPIFFS unmounted\r\n");
 }
 
 /******************************************************************************

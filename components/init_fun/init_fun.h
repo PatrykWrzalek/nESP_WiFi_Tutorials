@@ -11,6 +11,8 @@
 #define MAX_STA_CON_TO_AP 5
 
 void gpio_init(void);
+void spiffs_init(void);
+void spiffs_deinit(void);
 void esp_AP_init(void);
 void custom_tcpip_dhcp(void);
 esp_err_t change_tcpip_dhcp();

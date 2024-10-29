@@ -3,6 +3,9 @@
 
 void system_init(void *arg);
 void workStatus(void *arg);
+void spiffs_test(void *arg);
+
+void spiffs_info(void);
 
 /******************************************************************************
  * FunctionName : app_main
@@ -16,6 +19,7 @@ void app_main(void)
 {
     xTaskCreate(system_init, "Init_system", 2048, NULL, 9, NULL);
 
+    xTaskCreate(spiffs_test, "SPIFFS", 1024, NULL, 3, NULL);
     xTaskCreate(workStatus, "Status", 1024, NULL, 1, NULL);
 }
 
@@ -28,6 +32,7 @@ void app_main(void)
 void system_init(void *arg)
 {
     gpio_init();
+    spiffs_init();
 
     vTaskDelay(5000 / portTICK_RATE_MS);
     esp_AP_init();
@@ -53,4 +58,95 @@ void workStatus(void *arg)
         vTaskDelay(1000 / portTICK_RATE_MS);
     }
     vTaskDelete(NULL);
+}
+
+/******************************************************************************
+ * FunctionName : spiffs_test
+ * Description  : test task for SPIFFS.
+ * Parameters   : none
+ * Returns      : none
+ *******************************************************************************/
+void spiffs_test(void *arg)
+{
+    vTaskDelay(30000 / portTICK_RATE_MS);
+
+    spiffs_info();
+
+    ESP_LOGI(TAG, "Opening file...\r\n");
+    FILE *f = fopen("/spiffs/hello.txt", "w"); // Otwarcie pliku do zapisu "w" - writte (jeżeli takiego nie ma to utworzenie)
+    if (f == NULL)                             // Błąd otwierania pliku
+    {
+        ESP_LOGE(TAG, "Failed to open file for writing\r\n");
+        return;
+    }
+    fprintf(f, "Hello World!");        // Zapisanie tekstu do pliku
+    fclose(f);                         // Zamknięcie pliku
+    ESP_LOGI(TAG, "File written\r\n"); // Informacja o zakończeniu zapisu
+
+    struct stat st;
+    if (stat("/spiffs/foo.txt", &st) == 0) // Sprawdzenie, czy plik docelowy istnieje przed zmianą nazwy
+    {
+        // Usunięcie istniejącego pliku
+        unlink("/spiffs/foo.txt");
+    }
+
+    ESP_LOGI(TAG, "Renaming file..\r\n");
+    if (rename("/spiffs/hello.txt", "/spiffs/foo.txt") != 0) // Zmiana nazwy pierwotnego pliku
+    {
+        ESP_LOGE(TAG, "Rename failed\r\n"); // Błąd zmiany nazwy pliku
+        return;
+    }
+    else
+    {
+        ESP_LOGI(TAG, "Successfully renamed file from: >> /spiffs/hello.txt << to: >> /spiffs/foo.txt <<\r\n");
+    }
+
+    ESP_LOGI(TAG, "Reading file...\r\n");
+    f = fopen("/spiffs/foo.txt", "r"); // Otwarcie pliku do odczytu "r" - read
+    if (f == NULL)
+    {
+        ESP_LOGE(TAG, "Failed to open file for reading\r\n"); // Błąd otwierania pliku do odczytu
+        return;
+    }
+    char line[64];
+    fgets(line, sizeof(line), f); // Odczytanie linii z pliku
+    ESP_LOGI(TAG, "Read from file: < %s >", line);
+    fclose(f); // Zamknięcie pliku
+
+    spiffs_info();
+
+    ESP_LOGI(TAG, "Removing file..\r\n");
+    if (remove("/spiffs/foo.txt") != 0) // Usunięcie pliku
+    {
+        ESP_LOGE(TAG, "Remove failed\r\n"); // Błąd usuwania pliku
+        return;
+    }
+    else
+    {
+        ESP_LOGI(TAG, "Successfully removed file: >> /spiffs/foo.txt <<\r\n");
+    }
+
+    spiffs_info();
+    spiffs_deinit();
+    vTaskDelete(NULL);
+}
+
+/******************************************************************************
+ * FunctionName : spiffs_info
+ * Description  : SPIFFS info function.
+ * Parameters   : none
+ * Returns      : none
+ *******************************************************************************/
+void spiffs_info(void)
+{
+    size_t total = 0, used = 0;
+    esp_err_t ERR = esp_spiffs_info(NULL, &total, &used); // Pobieranie informacji o partycji SPIFFS
+    if (ERR != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to get SPIFFS partition information (%s)\r\n", esp_err_to_name(ERR)); // Błąd podczas pobierania informacji o partycji
+    }
+    else
+    {
+        ESP_LOGI(TAG, "Partition size: total: %d, used: %d\r\n", total, used); // Wyświetlenie całkowitej i użytej wielkości partycji
+    }
 }
