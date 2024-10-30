@@ -1,16 +1,18 @@
 #include <main.h> // dla kontenera na Linux ("/") separato jest inny niż dla Windows'a ("\")
 #include <init_fun.h>
+#include <tekst.h> // Wygenerowany plik z zawartością tekst.txt
 
 void system_init(void *arg);
 void workStatus(void *arg);
 void spiffs_test(void *arg);
 
 void spiffs_info(void);
+void spiffs_folder_in_workspace(void);
 
 /******************************************************************************
  * FunctionName : app_main
  * Description  : entry of app application, init app function here.
- * Users can use tasks with priorities from 1 to 9
+ * Users can use tasks with priorities from 1 to 15
  * (priority of the freeRTOS timer is 2).
  * Parameters   : none
  * Returns      : none
@@ -19,7 +21,7 @@ void app_main(void)
 {
     xTaskCreate(system_init, "Init_system", 2048, NULL, 9, NULL);
 
-    xTaskCreate(spiffs_test, "SPIFFS", 1024, NULL, 3, NULL);
+    xTaskCreate(spiffs_test, "SPIFFS", 2048, NULL, 3, NULL);
     xTaskCreate(workStatus, "Status", 1024, NULL, 1, NULL);
 }
 
@@ -68,7 +70,7 @@ void workStatus(void *arg)
  *******************************************************************************/
 void spiffs_test(void *arg)
 {
-    vTaskDelay(30000 / portTICK_RATE_MS);
+    vTaskDelay(10000 / portTICK_RATE_MS);
 
     spiffs_info();
 
@@ -76,7 +78,7 @@ void spiffs_test(void *arg)
     FILE *f = fopen("/spiffs/hello.txt", "w"); // Otwarcie pliku do zapisu "w" - writte (jeżeli takiego nie ma to utworzenie)
     if (f == NULL)                             // Błąd otwierania pliku
     {
-        ESP_LOGE(TAG, "Failed to open file for writing\r\n");
+        ESP_LOGE(TAG, "Failed to open file for writing\r\n"); // Błąd otwierania pliku do zapisu
         return;
     }
     fprintf(f, "Hello World!");        // Zapisanie tekstu do pliku
@@ -110,7 +112,7 @@ void spiffs_test(void *arg)
     }
     char line[64];
     fgets(line, sizeof(line), f); // Odczytanie linii z pliku
-    ESP_LOGI(TAG, "Read from file: < %s >", line);
+    ESP_LOGI(TAG, "Read from file: < %s >\r\n", line);
     fclose(f); // Zamknięcie pliku
 
     spiffs_info();
@@ -125,6 +127,8 @@ void spiffs_test(void *arg)
     {
         ESP_LOGI(TAG, "Successfully removed file: >> /spiffs/foo.txt <<\r\n");
     }
+
+    spiffs_folder_in_workspace();
 
     spiffs_info();
     spiffs_deinit();
@@ -149,4 +153,41 @@ void spiffs_info(void)
     {
         ESP_LOGI(TAG, "Partition size: total: %d, used: %d\r\n", total, used); // Wyświetlenie całkowitej i użytej wielkości partycji
     }
+}
+
+/******************************************************************************
+ * FunctionName : spiffs_folder_in_workspace
+ * Description  : write & read tekst.txt to SPIFFS.
+ * Parameters   : none
+ * Returns      : none
+ *******************************************************************************/
+void spiffs_folder_in_workspace(void)
+{
+    ESP_LOGI(TAG, "Reading file from workspace folder...\r\n");
+
+    ESP_LOGI(TAG, "Opening file...\r\n");
+    FILE *f = fopen("/spiffs/tekst.txt", "w"); // Otwarcie pliku do zapisu "w" - writte (jeżeli takiego nie ma to utworzenie)
+    if (f == NULL)                             // Błąd otwierania pliku
+    {
+        ESP_LOGE(TAG, "Failed to open file for writing\r\n"); // Błąd otwierania pliku do zapisu
+        return;
+    }
+    fprintf(f, tekst_txt);             // Zapisanie ciągu znaków uzyskanego z pliku tekst.txt do pliku SPIFFS
+    fclose(f);                         // Zamknięcie pliku
+    ESP_LOGI(TAG, "File written\r\n"); // Informacja o zakończeniu zapisu
+
+    ESP_LOGI(TAG, "Reading file...\r\n");
+    f = fopen("/spiffs/tekst.txt", "r"); // Otwarcie pliku do odczytu "r" - read
+    if (f == NULL)
+    {
+        ESP_LOGE(TAG, "Failed to open file for reading\r\n"); // Błąd otwierania pliku do odczytu
+        return;
+    }
+    char line[256];
+    fgets(line, sizeof(line), f); // Odczytanie linii z pliku
+    ESP_LOGI(TAG, "Read from file: < %s >\r\n", line);
+
+    uint16_t siz_dat = uxTaskGetStackHighWaterMark(NULL); // Info for debug
+    ESP_LOGI(TAG, "SPIFFS task stack: %d\r\n", siz_dat);
+    fclose(f); // Zamknięcie pliku
 }
