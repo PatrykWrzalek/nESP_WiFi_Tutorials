@@ -16,4 +16,8 @@
 #include <sys/param.h>
 #include <esp_http_server.h>
 
+#include <sys/unistd.h>
+#include <sys/stat.h>
+#include <esp_spiffs.h>
+
 #endif

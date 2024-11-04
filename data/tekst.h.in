@@ -1,0 +1,7 @@
+#ifndef TEKST_H
+#define TEKST_H
+
+const char *tekst_txt = "@TEKST_TRESC@";
+// const char *tekst_txt = "@TEKST_TRESC@"; // Inne pliki przekształcane na ciągi znaków
+
+#endif

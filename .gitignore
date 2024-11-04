@@ -2,4 +2,5 @@
 .devcontainer/docker
 build/
 sdkconfig
+sdkconfig.old
 README.md*
